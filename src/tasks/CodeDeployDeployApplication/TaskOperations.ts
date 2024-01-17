@@ -120,26 +120,30 @@ export class TaskOperations {
         }
 
         console.log(tl.loc('UploadingBundle', archiveName, key, this.taskParameters.bucketName))
-        const fileBuffer = fs.createReadStream(archiveName)
+
         try {
             const request: S3.PutObjectRequest = {
                 Bucket: this.taskParameters.bucketName,
                 Key: key,
-                Body: fileBuffer
+                Body: fs.createReadStream(archiveName)
             }
 
             if (this.taskParameters.filesAcl && this.taskParameters.filesAcl !== 'none') {
                 request.ACL = this.taskParameters.filesAcl
             }
 
-            await this.s3Client.upload(request).promise()
-            console.log(tl.loc('BundleUploadCompleted'))
-
-            // clean up the archive if we created one
-            if (autoCreatedArchive) {
-                console.log(tl.loc('DeletingUploadedBundle', archiveName))
-                fs.unlinkSync(archiveName)
-            }
+            await this.s3Client
+                .upload(request, (s3Err: Error, data: S3.ManagedUpload.SendData) => {
+                    if (s3Err) {
+                        throw s3Err
+                    }
+                    console.log(tl.loc('BundleUploadCompleted', data.Bucket))
+                    if (autoCreatedArchive /*and if it exists */) {
+                        console.log(tl.loc('DeletingUploadedBundle', archiveName))
+                        fs.unlinkSync(archiveName)
+                    }
+                })
+                .promise()
 
             return key
         } catch (err) {

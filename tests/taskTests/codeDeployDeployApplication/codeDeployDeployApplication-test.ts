@@ -45,9 +45,9 @@ const codeDeployDeploymentId = {
 }
 
 describe('CodeDeploy Deploy Application', () => {
-    // Creates a simple mock that always succeeds (at least for these tests)
     const tempDir = path.join(__dirname, 'temp')
 
+    // Creates a simple mock that always succeeds (at least for these tests)
     function createSuccessfulCodeDeploy(): CodeDeploy {
         const codeDeploy = new CodeDeploy() as any
         codeDeploy.getApplication = jest.fn(() => emptyPromise)

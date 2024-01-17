@@ -137,8 +137,11 @@ export class TaskOperations {
                     if (s3Err) {
                         throw s3Err
                     }
-                    console.log(tl.loc('BundleUploadCompleted', data.Bucket))
-                    if (autoCreatedArchive /*and if it exists */) {
+
+                    console.log(tl.loc('BundleUploadCompleted', data))
+
+                    // clean up the archive if we created one
+                    if (autoCreatedArchive) {
                         console.log(tl.loc('DeletingUploadedBundle', archiveName))
                         fs.unlinkSync(archiveName)
                     }

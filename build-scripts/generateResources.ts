@@ -7,9 +7,9 @@ import * as fs from 'fs-extra'
 import JsonQuery from 'json-query'
 import * as path from 'path'
 import validator from 'validator'
-import axios from 'axios'
 
 import { buildTasks, releaseVersion, repoRoot, sourceTasks } from './scriptUtils'
+import syncRequest from 'sync-request'
 import isUUID = validator.isUUID
 import isAlphanumeric = validator.isAlphanumeric
 import isLength = validator.isLength
@@ -27,29 +27,26 @@ function findMatchingFiles(directory: string): string[] {
 // Downloads the latest known AWS regions file used by the various
 // AWS toolkits and constructs an object we can inject into each
 // task's region picker options.
-async function fetchLatestRegions(): Promise<string[]> {
+function fetchLatestRegions(): string[] {
     console.log('Fetching AWS regions')
 
     const endpointsFileUrl = 'https://aws-toolkit-endpoints.s3.amazonaws.com/endpoints.json'
 
     const availableRegions: any = {}
 
-    try {
-        const response = await axios.get(endpointsFileUrl)
-        const allEndpoints = response.data
+    const res = syncRequest('GET', endpointsFileUrl)
+    // TODO remove syncRequest
+    const allEndpoints = JSON.parse(res.getBody() as string)
 
-        for (const partition of allEndpoints.partitions) {
-            const regionKeys = Object.keys(partition.regions)
-            regionKeys.forEach((rk: string) => {
-                availableRegions[rk] = `${partition.regions[rk].description} [${rk.toString()}]`
-            })
-        }
+    for (let p = 0; p < allEndpoints.partitions.length; p++) {
+        const partition = allEndpoints.partitions[p]
 
-        return availableRegions
-    } catch (err) {
-        console.error('Error fetching AWS regions:', err)
-        throw err
+        const regionKeys = Object.keys(partition.regions)
+        regionKeys.forEach((rk: string) => {
+            availableRegions[rk] = `${partition.regions[rk].description} [${rk.toString()}]`
+        })
     }
+    return availableRegions
 }
 
 function validateTask(task: any) {
@@ -210,21 +207,10 @@ function addVersionToVssExtension(versionInfo: string): void {
     fs.writeFileSync(vssBuildPath, JSON.stringify(vss, undefined, 2))
 }
 
-;(async () => {
-    try {
-        console.time(timeMessage)
-
-        const knownRegions = await fetchLatestRegions()
-
-        findMatchingFiles(sourceTasks).forEach(path => {
-            generateTaskResources(path, knownRegions, releaseVersion)
-        })
-
-        addVersionToVssExtension(releaseVersion)
-    } catch (err) {
-        console.error('Error generating resources:', err)
-        throw err
-    }
-
-    console.timeEnd(timeMessage)
-})()
+console.time(timeMessage)
+const knownRegions = fetchLatestRegions()
+findMatchingFiles(sourceTasks).forEach(path => {
+    generateTaskResources(path, knownRegions, releaseVersion)
+})
+addVersionToVssExtension(releaseVersion)
+console.timeEnd(timeMessage)

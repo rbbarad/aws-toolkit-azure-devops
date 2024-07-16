@@ -66,7 +66,7 @@ function packagePlugin(options: CommandLineOptions) {
     // stage manifest images
     fs.copySync(path.join(folders.repoRoot, 'images'), path.join(folders.packageRoot, 'images'), { overwrite: true })
 
-    // get required npm packages that will be copied
+    // get required npm packages that will be coppied
     installNodePackages(npmFolder)
 
     // clean, dedupe and pack each task as needed
@@ -118,7 +118,8 @@ function packagePlugin(options: CommandLineOptions) {
                 platform: 'node',
                 target: ['node10'],
                 minify: true,
-                outfile: `${taskPackageFolder}/${taskName}.js`
+                outfile: `${taskPackageFolder}/${taskName}.js`,
+                external: ['shelljs'] // mitigates shelljs bundling issue -- https://github.com/microsoft/azure-pipelines-task-lib/issues/942
             })
             result.warnings.forEach(warning => console.log(warning))
         } catch (err) {
@@ -142,7 +143,7 @@ function packagePlugin(options: CommandLineOptions) {
 
     console.log('Packaging with:' + `${tfx} ${args.join(' ')}`)
 
-    ncp.execFileSync(tfx, args, { stdio: 'pipe', shell: true })
+    ncp.execFileSync(tfx, args, { stdio: 'pipe' })
 
     console.log('Packaging successful')
 }
